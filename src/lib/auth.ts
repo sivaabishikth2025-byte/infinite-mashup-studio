@@ -49,7 +49,16 @@ export function saveSession(tokens: Tokens) {
 }
 
 export function clearSession() {
+  if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+  sessionStorage.removeItem(KEY);
+}
+
+export function signOut() {
+  clearSession();
+  if (typeof window !== "undefined") {
+    window.location.replace("/login?out=1");
+  }
 }
 
 export function authHeaders(): Record<string, string> {
@@ -100,11 +109,4 @@ export async function signIn(email: string, password: string) {
   };
   saveSession(tokens);
   return tokens;
-}
-
-export function signOut() {
-  clearSession();
-  if (typeof window !== "undefined") {
-    window.location.href = "/login";
-  }
 }

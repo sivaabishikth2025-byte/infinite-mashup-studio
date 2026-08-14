@@ -9,8 +9,7 @@ export function Header() {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    const session = getSession();
-    setEmail(session?.email || null);
+    setEmail(getSession()?.email || null);
   }, []);
 
   return (
@@ -30,14 +29,16 @@ export function Header() {
           Profile
         </Link>
         {email ? (
-          <button
+          <a
+            href="/login?out=1"
             className="hover:text-white"
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               signOut();
             }}
           >
             Sign out
-          </button>
+          </a>
         ) : (
           <Link href="/login" className="hover:text-white">
             Sign in

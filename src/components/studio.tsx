@@ -57,6 +57,7 @@ export function Studio() {
   const [error, setError] = useState<string | null>(null);
   const [eta, setEta] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
+  const [used, setUsed] = useState(0);
   const [dailyLimit, setDailyLimit] = useState(10);
   const [photos, setPhotos] = useState<string[]>([]);
   const [camOn, setCamOn] = useState(false);
@@ -83,11 +84,19 @@ export function Studio() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/quota", { headers: authHeaders(), cache: "no-store" })
+    const session = getSession();
+    const qs = new URLSearchParams();
+    if (session?.accessToken) qs.set("accessToken", session.accessToken);
+    if (session?.idToken) qs.set("idToken", session.idToken);
+    fetch(`/api/quota?${qs.toString()}`, {
+      headers: authHeaders(),
+      cache: "no-store",
+    })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) return;
         setRemaining(typeof data.remaining === "number" ? data.remaining : null);
+        if (typeof data.used === "number") setUsed(data.used);
         if (typeof data.limit === "number") setDailyLimit(data.limit);
       })
       .catch(() => undefined);
@@ -201,6 +210,8 @@ export function Studio() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Fusion failed.");
       if (typeof data.remaining === "number") setRemaining(data.remaining);
+      if (typeof data.used === "number") setUsed(data.used);
+      else if (typeof data.remaining === "number") setUsed(dailyLimit - data.remaining);
       const mashupId = await waitForJob(data.jobId);
       confetti({
         particleCount: 180,
@@ -342,10 +353,10 @@ export function Studio() {
           </Button>
           <p className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-xs text-white/45">
             {remaining === 0
-              ? `Daily limit reached · ${dailyLimit}/${dailyLimit}`
+              ? `Daily limit reached · ${used}/${dailyLimit} used`
               : remaining === null
                 ? `${dailyLimit} fuses / day`
-                : `${remaining}/${dailyLimit} left today`}
+                : `${used} used · ${remaining} left today`}
           </p>
         </div>
         {error && (

@@ -168,7 +168,12 @@ def current_user(meta, payload):
         or qs.get("accessToken")
         or ""
     )
-    id_token = headers.get("x-id-token") or payload.get("idToken") or ""
+    id_token = (
+        headers.get("x-id-token")
+        or payload.get("idToken")
+        or qs.get("idToken")
+        or ""
+    )
     if isinstance(access, str) and access.lower().startswith("bearer "):
         access = access[7:]
     claims = jwt_claims(id_token) or jwt_claims(access)
@@ -446,9 +451,30 @@ def quota_pk(user, ip: str) -> str:
     return f"QUOTA#IP#{ip}#{day}"
 
 
+def mashups_used_today(user) -> int:
+    if not user or not user.get("sub"):
+        return 0
+    result = table.query(
+        IndexName="byUser",
+        KeyConditionExpression="gsi3pk = :pk",
+        ExpressionAttributeValues={":pk": f"USER#{user['sub']}"},
+        ScanIndexForward=False,
+        Limit=48,
+    )
+    today = utc_date_key()
+    return sum(
+        1
+        for raw in result.get("Items", [])
+        if str(raw.get("createdAt") or "").startswith(today)
+    )
+
+
 def get_quota(user, ip: str):
-    item = table.get_item(Key={"pk": quota_pk(user, ip)}).get("Item") or {}
-    used = int(item.get("count") or 0)
+    if user:
+        used = mashups_used_today(user)
+    else:
+        item = table.get_item(Key={"pk": quota_pk(user, ip)}).get("Item") or {}
+        used = int(item.get("count") or 0)
     remaining = max(0, DAILY_LIMIT - used)
     return {
         "used": used,
@@ -535,17 +561,31 @@ def start_job(payload, ip, user):
         else:
             if not 2 <= len(ids) <= 5:
                 return respond(400, {"error": "Choose 2 to 5 ingredients."})
-        allowed, remaining = consume_daily_quota(user, ip)
-        if not allowed:
-            return respond(
-                429,
-                {
-                    "error": f"Daily limit reached. Each account can fuse {DAILY_LIMIT} mashups per UTC day.",
-                    "used": DAILY_LIMIT,
-                    "limit": DAILY_LIMIT,
-                    "remaining": 0,
-                },
-            )
+        if user:
+            used = mashups_used_today(user)
+            if used >= DAILY_LIMIT:
+                return respond(
+                    429,
+                    {
+                        "error": f"Daily limit reached. Each account can fuse {DAILY_LIMIT} mashups per UTC day.",
+                        "used": used,
+                        "limit": DAILY_LIMIT,
+                        "remaining": 0,
+                    },
+                )
+            remaining = DAILY_LIMIT - used - 1
+        else:
+            allowed, remaining = consume_daily_quota(user, ip)
+            if not allowed:
+                return respond(
+                    429,
+                    {
+                        "error": f"Daily limit reached. Each account can fuse {DAILY_LIMIT} mashups per UTC day.",
+                        "used": DAILY_LIMIT,
+                        "limit": DAILY_LIMIT,
+                        "remaining": 0,
+                    },
+                )
         if not check_rate(ip):
             return respond(429, {"error": "Hourly fusion limit reached. Try again later."})
 

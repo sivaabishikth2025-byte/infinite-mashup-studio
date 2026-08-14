@@ -3,20 +3,18 @@
 import { AuthPanel } from "@/components/auth-panel";
 import { Header } from "@/components/header";
 import { Particles } from "@/components/particles";
-import { getSession } from "@/lib/auth";
+import { clearSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (getSession()) router.replace("/profile");
-    else setReady(true);
-  }, [router]);
-
-  if (!ready) return null;
+    if (new URLSearchParams(window.location.search).has("out")) {
+      clearSession();
+    }
+  }, []);
 
   return (
     <div className="relative min-h-screen">

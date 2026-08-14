@@ -5,7 +5,8 @@ import { forwardAuth } from "@/lib/forward-auth";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const upstream = await fetch(`${fuseApiUrl()}/quota`, {
+  const incoming = new URL(request.url);
+  const upstream = await fetch(`${fuseApiUrl()}/quota${incoming.search}`, {
     cache: "no-store",
     headers: forwardAuth(request),
   });
