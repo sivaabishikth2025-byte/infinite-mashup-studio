@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    FUSE_API_URL:
+      process.env.FUSE_API_URL ||
+      "https://1gp21rrv70.execute-api.us-east-1.amazonaws.com",
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.s3.amazonaws.com" },

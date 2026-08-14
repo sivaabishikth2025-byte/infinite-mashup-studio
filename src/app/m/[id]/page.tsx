@@ -1,6 +1,7 @@
 import { Header } from "@/components/header";
 import { Particles } from "@/components/particles";
 import { ResultView } from "@/components/result-view";
+import { fuseApiUrl } from "@/lib/api";
 import type { Mashup } from "@/lib/types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -8,9 +9,7 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 async function loadMashup(id: string): Promise<Mashup | null> {
-  const api = process.env.FUSE_API_URL;
-  if (!api) return null;
-  const res = await fetch(`${api.replace(/\/$/, "")}/mashups/${id}`, {
+  const res = await fetch(`${fuseApiUrl()}/mashups/${id}`, {
     cache: "no-store",
   });
   if (!res.ok) return null;

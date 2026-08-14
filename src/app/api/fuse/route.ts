@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
+import { fuseApiUrl } from "@/lib/api";
 import { forwardAuth } from "@/lib/forward-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-function apiBase() {
-  const url = process.env.FUSE_API_URL;
-  if (!url) throw new Error("FUSE_API_URL is not configured.");
-  return url.replace(/\/$/, "");
-}
-
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
-    const upstream = await fetch(`${apiBase()}/fuse`, {
+    const upstream = await fetch(`${fuseApiUrl()}/fuse`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

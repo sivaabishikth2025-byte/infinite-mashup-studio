@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
+import { fuseApiUrl } from "@/lib/api";
 import { forwardAuth } from "@/lib/forward-auth";
 
 export const runtime = "nodejs";
-
-function apiBase() {
-  const url = process.env.FUSE_API_URL;
-  if (!url) throw new Error("FUSE_API_URL is not configured.");
-  return url.replace(/\/$/, "");
-}
 
 export async function GET(
   _request: Request,
@@ -15,7 +10,7 @@ export async function GET(
 ) {
   const { id } = await context.params;
   try {
-    const upstream = await fetch(`${apiBase()}/mashups/${id}`, { cache: "no-store" });
+    const upstream = await fetch(`${fuseApiUrl()}/mashups/${id}`, { cache: "no-store" });
     const data = await upstream.json();
     return NextResponse.json(data, { status: upstream.status });
   } catch (err) {
@@ -30,7 +25,7 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
   try {
-    const upstream = await fetch(`${apiBase()}/mashups/${id}`, {
+    const upstream = await fetch(`${fuseApiUrl()}/mashups/${id}`, {
       method: "DELETE",
       headers: forwardAuth(request),
     });
