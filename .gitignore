@@ -39,6 +39,8 @@ yarn-error.log*
 # aws
 .aws-sam/
 samconfig.toml
+lambda/__pycache__/
+**/__pycache__/
 
 # typescript
 *.tsbuildinfo
