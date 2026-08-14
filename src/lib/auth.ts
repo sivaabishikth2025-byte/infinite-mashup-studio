@@ -57,7 +57,7 @@ export function clearSession() {
 export function signOut() {
   clearSession();
   if (typeof window !== "undefined") {
-    window.location.replace("/login?out=1");
+    window.location.replace("/?out=1");
   }
 }
 

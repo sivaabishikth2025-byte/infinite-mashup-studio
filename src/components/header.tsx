@@ -30,7 +30,7 @@ export function Header() {
         </Link>
         {email ? (
           <a
-            href="/login?out=1"
+            href="/?out=1"
             className="hover:text-white"
             onClick={(e) => {
               e.preventDefault();
@@ -40,7 +40,7 @@ export function Header() {
             Sign out
           </a>
         ) : (
-          <Link href="/login" className="hover:text-white">
+          <Link href="/" className="hover:text-white">
             Sign in
           </Link>
         )}

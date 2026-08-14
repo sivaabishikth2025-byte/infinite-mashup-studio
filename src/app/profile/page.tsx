@@ -25,6 +25,7 @@ export default function ProfilePage() {
     if (!session) {
       setItems([]);
       setLoading(false);
+      window.location.replace("/");
       return;
     }
     setLoading(true);

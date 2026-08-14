@@ -26,6 +26,7 @@ export default function GalleryPage() {
     if (!inSession) {
       setItems([]);
       setError(null);
+      window.location.replace("/");
       return;
     }
     const qs = tab === "today" ? `?mine=1&date=${dateKey}` : "?mine=1";
