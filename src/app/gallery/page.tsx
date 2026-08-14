@@ -16,10 +16,19 @@ export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+  const [ready, setReady] = useState(false);
 
   function load() {
-    setSignedIn(Boolean(getSession()?.accessToken));
-    const qs = tab === "today" ? `?date=${dateKey}` : "";
+    const session = getSession();
+    const inSession = Boolean(session?.accessToken);
+    setSignedIn(inSession);
+    setReady(true);
+    if (!inSession) {
+      setItems([]);
+      setError(null);
+      return;
+    }
+    const qs = tab === "today" ? `?mine=1&date=${dateKey}` : "?mine=1";
     fetch(`/api/gallery${qs}`, { headers: authHeaders(), cache: "no-store" })
       .then(async (res) => {
         const data = await res.json();
@@ -51,62 +60,74 @@ export default function GalleryPage() {
       <Particles />
       <Header />
       <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-8">
-        <h1 className="font-serif text-4xl md:text-6xl">Public gallery</h1>
+        <h1 className="font-serif text-4xl md:text-6xl">Your gallery</h1>
         <p className="mt-3 max-w-2xl text-white/60">
           {signedIn
-            ? "Today lists every mashup fused on this UTC day. Use Delete on a card to remove a post you don’t want."
-            : "Today lists every mashup fused on this UTC day. Sign in, then Delete appears on the cards."}
+            ? "Only mashups you fused while signed in appear here. Nobody else can see this list."
+            : "Sign in to see the mashups saved to your account. Signed out, this gallery stays empty."}
         </p>
-        <div className="mt-6 flex gap-2">
-          <button
-            className={`rounded-full px-4 py-2 text-sm ${tab === "today" ? "bg-white text-black" : "bg-white/10"}`}
-            onClick={() => setTab("today")}
-          >
-            Today
-          </button>
-          <button
-            className={`rounded-full px-4 py-2 text-sm ${tab === "all" ? "bg-white text-black" : "bg-white/10"}`}
-            onClick={() => setTab("all")}
-          >
-            All time
-          </button>
-        </div>
-        {error && <p className="mt-6 text-rose-300">{error}</p>}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <div key={item.id} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-              <Link href={`/m/${item.id}`}>
-                <div className="relative aspect-[4/3]">
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.name}
-                    fill
-                    unoptimized
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-4">
-                  <h2 className="font-serif text-2xl">{item.name}</h2>
-                  <p className="mt-1 text-sm text-white/60">{item.tagline}</p>
-                </div>
-              </Link>
-              {item.canDelete && (
-                <div className="px-4 pb-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="border border-rose-400/40 text-rose-200"
-                    onClick={() => remove(item.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              )}
+        {!ready ? null : !signedIn ? (
+          <div className="mt-10 rounded-[2rem] border border-white/10 bg-white/5 px-6 py-16 text-center">
+            <p className="font-serif text-3xl">Private until you sign in</p>
+            <p className="mx-auto mt-3 max-w-md text-white/55">
+              Each account has its own gallery. Log out and these cards disappear.
+            </p>
+            <Button asChild variant="glow" className="mt-6">
+              <Link href="/login">Sign in</Link>
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 flex gap-2">
+              <button
+                className={`rounded-full px-4 py-2 text-sm ${tab === "today" ? "bg-white text-black" : "bg-white/10"}`}
+                onClick={() => setTab("today")}
+              >
+                Today
+              </button>
+              <button
+                className={`rounded-full px-4 py-2 text-sm ${tab === "all" ? "bg-white text-black" : "bg-white/10"}`}
+                onClick={() => setTab("all")}
+              >
+                All time
+              </button>
             </div>
-          ))}
-        </div>
-        {!error && items.length === 0 && (
-          <p className="mt-10 text-white/50">No mashups yet. Be the first to fuse.</p>
+            {error && <p className="mt-6 text-rose-300">{error}</p>}
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((item) => (
+                <div key={item.id} className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+                  <Link href={`/m/${item.id}`}>
+                    <div className="relative aspect-[4/3]">
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h2 className="font-serif text-2xl">{item.name}</h2>
+                      <p className="mt-1 text-sm text-white/60">{item.tagline}</p>
+                    </div>
+                  </Link>
+                  <div className="px-4 pb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="border border-rose-400/40 text-rose-200"
+                      onClick={() => remove(item.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {!error && items.length === 0 && (
+              <p className="mt-10 text-white/50">No mashups on this account yet. Fuse one in the studio.</p>
+            )}
+          </>
         )}
       </main>
     </div>

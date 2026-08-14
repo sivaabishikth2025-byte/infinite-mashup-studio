@@ -206,15 +206,32 @@ def upsert_user(user):
 def send_mail(to_addr, subject, html, text):
     if not MAIL_FROM or not to_addr:
         return
+    app_url = (os.environ.get("APP_URL") or "https://master.d1jurjfgyej0xx.amplifyapp.com").rstrip("/")
+    unsub = f"{app_url}/profile"
+    wrapped_html = f"""<!DOCTYPE html>
+<html><body style="margin:0;background:#07060c;color:#f6f3ff;font-family:Georgia,serif;">
+  <div style="max-width:560px;margin:0 auto;padding:28px 20px;">
+    <p style="letter-spacing:0.28em;font-size:11px;color:#67e8f9;text-transform:uppercase;">Infinite Mashup Studio</p>
+    {html}
+    <p style="margin-top:28px;font-size:12px;color:#9ca3af;font-family:Arial,sans-serif;">
+      This is a transactional notice for an account on Infinite Mashup Studio.
+      Manage mail from <a href="{unsub}" style="color:#67e8f9;">your profile</a>.
+    </p>
+  </div>
+</body></html>"""
     try:
         ses.send_email(
-            Source=MAIL_FROM,
+            Source=f"Infinite Mashup Studio <{MAIL_FROM}>",
             Destination={"ToAddresses": [to_addr]},
+            ReplyToAddresses=[MAIL_FROM],
             Message={
-                "Subject": {"Data": subject},
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
                 "Body": {
-                    "Html": {"Data": html},
-                    "Text": {"Data": text},
+                    "Text": {
+                        "Data": text + f"\n\nInfinite Mashup Studio\n{unsub}\n",
+                        "Charset": "UTF-8",
+                    },
+                    "Html": {"Data": wrapped_html, "Charset": "UTF-8"},
                 },
             },
         )
@@ -607,34 +624,20 @@ def get_mashup(mashup_id: str):
 
 
 def gallery(date_key: str | None, user=None, mine=False):
-    if mine:
-        if not user:
-            return respond(401, {"error": "Sign in to see your mashups."})
-        result = table.query(
-            IndexName="byUser",
-            KeyConditionExpression="gsi3pk = :pk",
-            ExpressionAttributeValues={":pk": f"USER#{user['sub']}"},
-            ScanIndexForward=False,
-            Limit=48,
-        )
-    elif date_key:
-        result = table.query(
-            IndexName="byDate",
-            KeyConditionExpression="gsi1pk = :pk",
-            ExpressionAttributeValues={":pk": f"DATE#{date_key}"},
-            ScanIndexForward=False,
-            Limit=24,
-        )
-    else:
-        result = table.query(
-            IndexName="byAll",
-            KeyConditionExpression="gsi2pk = :pk",
-            ExpressionAttributeValues={":pk": "DATE#ALL"},
-            ScanIndexForward=False,
-            Limit=24,
-        )
+    if not user:
+        return respond(200, {"items": []})
+    result = table.query(
+        IndexName="byUser",
+        KeyConditionExpression="gsi3pk = :pk",
+        ExpressionAttributeValues={":pk": f"USER#{user['sub']}"},
+        ScanIndexForward=False,
+        Limit=48,
+    )
     items = []
     for raw in result.get("Items", []):
+        created = raw.get("createdAt") or ""
+        if date_key and not str(created).startswith(date_key):
+            continue
         items.append(
             {
                 "id": raw.get("id"),
@@ -644,13 +647,7 @@ def gallery(date_key: str | None, user=None, mine=False):
                 "ingredients": raw.get("ingredients"),
                 "createdAt": raw.get("createdAt"),
                 "challengeDate": raw.get("challengeDate"),
-                "canDelete": bool(
-                    user
-                    and (
-                        raw.get("userId") == user.get("sub")
-                        or not raw.get("userId")
-                    )
-                ),
+                "canDelete": True,
             }
         )
     return respond(200, {"items": items})
@@ -793,7 +790,7 @@ def run_worker(job_id: str):
     app_url = os.environ.get("APP_URL") or "https://localhost:3000"
     send_mail(
         job.get("email"),
-        f"Your mashup is ready: {invention.get('name', 'Untitled')}",
+        f"Mashup ready — {invention.get('name', 'Untitled')}",
         (
             f"<p>Your fusion <strong>{invention.get('name')}</strong> is ready.</p>"
             f"<p>{invention.get('tagline', '')}</p>"
@@ -827,7 +824,7 @@ def run_digest():
         )
         send_mail(
             email,
-            f"Your Infinite Mashup report · {today}",
+            f"Your Infinite Mashup report for {today}",
             (
                 f"<h2>Today you fused {len(mashups)} mashup(s)</h2>"
                 f"<ul>{lines}</ul>"

@@ -106,8 +106,7 @@ export default function ProfilePage() {
                       variant="ghost"
                       onClick={() => {
                         signOut();
-                        setEmail(null);
-                        setItems([]);
+                        window.location.href = "/";
                       }}
                     >
                       Sign out

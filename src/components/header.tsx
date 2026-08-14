@@ -35,6 +35,7 @@ export function Header() {
             onClick={() => {
               signOut();
               setEmail(null);
+              window.location.href = "/";
             }}
           >
             Sign out
