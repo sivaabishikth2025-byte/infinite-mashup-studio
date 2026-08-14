@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.join(process.cwd()),
   env: {
     FUSE_API_URL:
       process.env.FUSE_API_URL ||

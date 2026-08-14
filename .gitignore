@@ -42,6 +42,9 @@ samconfig.toml
 lambda/__pycache__/
 **/__pycache__/
 
+# netlify
+.netlify
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
