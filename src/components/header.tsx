@@ -5,30 +5,31 @@ import { Sparkles } from "lucide-react";
 import { getSession, signOut } from "@/lib/auth";
 import { useEffect, useState } from "react";
 
-export function Header() {
+export function Header({ guest = false }: { guest?: boolean }) {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    if (guest) return;
     setEmail(getSession()?.email || null);
-  }, []);
+  }, [guest]);
 
   return (
     <header className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-      <Link href="/" className="flex items-center gap-2 font-medium">
+      <Link href={guest ? "/" : "/"} className="flex items-center gap-2 font-medium">
         <Sparkles className="h-4 w-4 text-fuchsia-300" />
         Infinite Mashup
       </Link>
-      <nav className="flex items-center gap-5 text-sm text-white/70">
-        <Link href="/" className="hover:text-white">
-          Studio
-        </Link>
-        <Link href="/gallery" className="hover:text-white">
-          Gallery
-        </Link>
-        <Link href="/profile" className="hover:text-white">
-          Profile
-        </Link>
-        {email ? (
+      {!guest && email && (
+        <nav className="flex items-center gap-5 text-sm text-white/70">
+          <Link href="/" className="hover:text-white">
+            Studio
+          </Link>
+          <Link href="/gallery" className="hover:text-white">
+            Gallery
+          </Link>
+          <Link href="/profile" className="hover:text-white">
+            Profile
+          </Link>
           <Link
             href="/?out=1"
             className="hover:text-white"
@@ -39,12 +40,8 @@ export function Header() {
           >
             Sign out
           </Link>
-        ) : (
-          <Link href="/" className="hover:text-white">
-            Sign in
-          </Link>
-        )}
-      </nav>
+        </nav>
+      )}
     </header>
   );
 }
