@@ -36,6 +36,17 @@ yarn-error.log*
 # vercel
 .vercel
 
+# aws
+.aws-sam/
+samconfig.toml
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

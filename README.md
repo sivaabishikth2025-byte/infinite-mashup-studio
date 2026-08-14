@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Infinite Mashup Studio
 
-## Getting Started
+Public creative game: the same daily ingredients for everyone, then Amazon Nova invents, paints, and narrates something that should not exist.
 
-First, run the development server:
+No login. Shareable CloudFront images. Gallery so people can compare.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Daily locked trio + optional extras, or Sandbox (2–5 free picks)
+- Async Fuse (no 30s API timeout): job polling until Nova Pro + Canvas finish
+- 8-card dossier, remix, share, download, copy
+- Amazon Polly origin narration
+- Amazon Translate for the dossier
+- Public gallery (today / all time) via DynamoDB
+- CloudFront CDN so links work for everyone (no expiring image URLs)
+- Hourly per-IP rate limit
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## AWS
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+API Gateway HTTP API → Lambda (async worker) → Bedrock Nova Pro + Nova Canvas → Polly → S3 → CloudFront. DynamoDB stores jobs, mashups, and rate counters. Translate on demand.
 
-## Learn More
+## Deploy
 
-To learn more about Next.js, take a look at the following resources:
+1. Bedrock (us-east-1): enable **Nova Pro** and **Nova Canvas**.
+2. `cd infra && sam build --template-file template.yaml && sam deploy --guided`
+3. Copy `ApiUrl` into `.env.local` as `FUSE_API_URL` (no trailing path).
+4. `npm run dev`
+5. Amplify Hosting: set `FUSE_API_URL` and `NEXT_PUBLIC_APP_URL`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+First Fuse can take 30–90 seconds. The UI waits on purpose.
