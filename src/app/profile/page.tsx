@@ -104,10 +104,7 @@ export default function ProfilePage() {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => {
-                        signOut();
-                        window.location.href = "/";
-                      }}
+                      onClick={() => signOut()}
                     >
                       Sign out
                     </Button>

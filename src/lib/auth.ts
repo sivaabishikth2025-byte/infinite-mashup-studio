@@ -104,4 +104,7 @@ export async function signIn(email: string, password: string) {
 
 export function signOut() {
   clearSession();
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
+  }
 }

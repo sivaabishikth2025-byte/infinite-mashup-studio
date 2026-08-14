@@ -34,8 +34,6 @@ export function Header() {
             className="hover:text-white"
             onClick={() => {
               signOut();
-              setEmail(null);
-              window.location.href = "/";
             }}
           >
             Sign out
