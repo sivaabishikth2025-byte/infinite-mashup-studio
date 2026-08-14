@@ -1,49 +1,52 @@
 # Infinite Mashup Studio
 
-AWS Builder Center **Weekend Creative Challenge** — `#creative-expression`
+Generative studio for the AWS Builder Center Weekend Creative Challenge (`#creative-expression`).
 
-Live app: [infinite-mashup-studio.netlify.app](https://infinite-mashup-studio.netlify.app)
+You compose ingredients. Fuse returns one invented subject: a real generated illustration, a dossier written from that image, and spoken origin audio.
 
-Fuse API: [API Gateway (us-east-1)](https://1gp21rrv70.execute-api.us-east-1.amazonaws.com)
+**App:** https://infinite-mashup-studio.netlify.app  
+**Repo:** https://github.com/sivaabishikth2025-byte/infinite-mashup-studio  
+**API:** https://1gp21rrv70.execute-api.us-east-1.amazonaws.com  
 
-Choose catalog ingredients (daily locked trio, or sandbox plus optional photos). Fuse invents one subject: a generated illustration, an eight-register dossier bound to that image, and spoken origin audio. Sign-in required. Galleries are private per Cognito account. Ten fuses per UTC day.
+## Product
 
-## What it produces
+| Mode | Input |
+|---|---|
+| Daily | Three catalog chips locked from the UTC date seed; up to two extra chips |
+| Sandbox | Two to five catalog chips; optional camera and/or upload (max two photos) |
 
-- Cinematic PNG of a single fused creature, object, or concept (Stability on Bedrock in **us-west-2**: Ultra → SD 3.5 Large → Core)
-- Dossier from **Amazon Nova Pro** with that PNG in the Converse payload: origin, abilities, personality, fun facts, advertisement, warning, classification, mock patent
-- Origin MP3 (**Amazon Polly**, neural Ruth)
-- Optional dossier localization (**Amazon Translate**)
-- Remix as a new job, not an in-place edit
+**Output of a completed fuse**
 
-## Architecture
+- PNG illustration of a single fused creature, object, or concept
+- Dossier: origin, abilities, personality, fun facts, advertisement, warning label, scientific classification, mock patent
+- MP3 of the origin (Polly)
+- Optional translated dossier (same image)
+- Remix starts a new job
 
-Two planes. The browser never holds Bedrock credentials.
+**Accounts**
 
-```text
-Browser + Cognito JWT
-  -> Netlify (Next.js 15) /api/*
-  -> API Gateway HTTP API
-  -> Lambda start_job  (JOB#PENDING, Invoke Event)
-  -> Lambda worker ~180s
-       -> Bedrock us-west-2  Stability PNG
-       -> Bedrock us-east-1  Nova Pro (PNG -> JSON)
-       -> Polly, Translate
-       -> S3  mashups/{id}.png|.mp3|.json
-       -> DynamoDB  MASHUP# + GSIs
-EventBridge 23:55 UTC -> digest via SES
-```
+Cognito email sign-in is required. Studio, Gallery, and Profile are hidden until you are signed in. Gallery and the daily cap are scoped to `sub` (private). **10 fuses per UTC day**, counted from that account’s mashup rows. Sign-out returns to the login panel. Browser notifications fire when a job completes. SES can send ready-mail and a 23:55 UTC digest if From is a verified identity (Gmail-as-From fails DMARC).
+
+## How a fuse runs
+
+Generation does not fit in a synchronous API Gateway timeout. The contract is a job.
+
+1. `POST /fuse` — validate catalog IDs, write `JOB#PENDING`, invoke the same Lambda with `InvocationType=Event`, return `jobId`
+2. Worker — Stability PNG (us-west-2) → Nova Pro Converse with that PNG (us-east-1) → Polly MP3 → S3 `mashups/{id}.png|.mp3|.json` → DynamoDB `MASHUP#` + GSIs → `JOB#COMPLETE`
+3. Browser polls `GET /jobs/{id}` then opens `/m/{id}`
+
+Sandbox photos are stored at `jobs/{jobId}/photo-N.jpg` and condition image generation. They are not published as the mashup.
 
 ```mermaid
 flowchart LR
-  U[Browser] -->|JWT| N[Netlify Next.js]
-  C[Cognito] -.-> U
-  N -->|HTTPS| AG[API Gateway]
-  AG --> L[Lambda]
-  L -->|async invoke| L
-  L --> BW[Bedrock Stability us-west-2]
-  L --> BE[Nova Pro us-east-1]
-  L --> P[Polly]
+  B[Browser] -->|JWT| N[Netlify Next.js]
+  CO[Cognito] -.-> B
+  N -->|/api proxy| AG[API Gateway HTTP API]
+  AG --> L[Lambda infinite-mashup-fuse]
+  L -->|Event invoke| L
+  L --> ST[Bedrock Stability us-west-2]
+  L --> NP[Nova Pro us-east-1]
+  L --> PO[Polly]
   L --> TR[Translate]
   L --> S3[S3]
   L --> DDB[DynamoDB]
@@ -51,26 +54,48 @@ flowchart LR
   EB[EventBridge 23:55 UTC] -->|digest| L
 ```
 
-Full diagram: [`article-assets/infinite-mashup-studio-full-architecture.png`](article-assets/infinite-mashup-studio-full-architecture.png)
+## What is actually in production
 
-**Indexes:** `DATE#{UTC}` (Today), `DATE#ALL`, `USER#{sub}` (gallery + quota). Sandbox still uses the UTC date partition; `mode` is an attribute.
-
-**Auth:** Cognito email pool, `USER_PASSWORD_AUTH`. Unsigned visitors see login only. Sign-out returns to login.
-
-## Stack
-
-| Piece | Choice |
+| Layer | What we use |
 |---|---|
-| UI | Next.js 15, TypeScript, Tailwind, Framer Motion on **Netlify** |
-| API | API Gateway HTTP API + Python 3.12 Lambda (`infinite-mashup-fuse`) |
-| Infra | SAM / CloudFormation stack `infinite-mashup-studio` **us-east-1** |
-| Image | Bedrock Stability **us-west-2** (Nova Canvas / Titan Image are not used — blocked/EOL on this account) |
-| Story | Nova Pro Converse + PNG |
-| Data | DynamoDB + S3 |
-| Identity | Cognito |
-| Mail | SES + EventBridge digest |
+| UI | Next.js 15, TypeScript, Tailwind, Framer Motion |
+| Host | **Netlify** (`@netlify/plugin-nextjs`), site `infinite-mashup-studio` |
+| Auth | Amazon Cognito user pool `us-east-1_QU5aLbg93`, client `7gj8bb4n43d55k0uon01dedt9m`, `USER_PASSWORD_AUTH` |
+| API | API Gateway HTTP API → Lambda `infinite-mashup-fuse` (Python 3.12, 180s, 1024 MB) |
+| Infra | SAM / CloudFormation stack **`infinite-mashup-studio`**, **us-east-1**, account `120569623789` |
+| Image | Bedrock **us-west-2**: `stability.stable-image-ultra-v1:1` → `stability.sd3-5-large-v1:0` → `stability.stable-image-core-v1:1` |
+| Dossier | Bedrock **us-east-1** Nova Pro `amazon.nova-pro-v1:0` (`converse`, PNG in the user message) |
+| Speech | Amazon Polly, neural Ruth |
+| Locale | Amazon Translate |
+| Objects | S3 `infinite-mashup-studio-mashupbucket-qtdt6ib5v7de` (`mashups/*` GetObject is public) |
+| State | DynamoDB `infinite-mashup-studio-MashupTable-IE2CZLX7ILOC` |
+| Mail | Amazon SES + EventBridge `cron(55 23 * * ? *)` |
 
-## Local UI
+**Not in the live image path:** Nova Canvas, Titan Image (blocked / EOL on this account). `IMAGE_MODEL_ID` in SAM still defaults to Canvas; the worker uses Stability in us-west-2 instead. Gemini image is a last-resort key in SAM, not the production path (credits 429). **Not used:** CloudFront, Amplify (UI left Amplify after `FUSE_API_URL` failed to inject). There is no public global gallery.
+
+**DynamoDB**
+
+| Key | Use |
+|---|---|
+| `pk` | `MASHUP#{uuid}` / `JOB#{id}` |
+| `gsi1` `DATE#{YYYY-MM-DD}` | Today (sandbox uses the UTC date, not `DATE#sandbox`) |
+| `gsi2` `DATE#ALL` | ordered all-time (not a public feed) |
+| `gsi3` `USER#{sub}` | private gallery and daily fuse count |
+
+## API
+
+| Method | Path |
+|---|---|
+| POST | `/fuse` |
+| GET | `/jobs/{id}` |
+| GET / DELETE | `/mashups/{id}` |
+| GET | `/gallery` (signed-in, `mine`) |
+| GET | `/quota` |
+| GET | `/translate` |
+
+The Next.js app proxies these under `/api/*`. Tokens: `Authorization`, `x-ims-access`, `x-id-token`.
+
+## Run the UI locally
 
 ```bash
 cp env.example .env.local
@@ -78,20 +103,16 @@ npm install
 npm run dev
 ```
 
-`FUSE_API_URL` must be the API Gateway origin with no path. Cognito IDs are in `env.example` / `netlify.toml`.
+`env.example` already points at the deployed API and Cognito pool. `FUSE_API_URL` must be the API origin with no path.
 
-## SAM
+## Deploy the SAM stack
+
+Bedrock model access: Nova Pro in **us-east-1**, Stability image models in **us-west-2**.
 
 ```bash
 sam build --template-file infra/template.yaml
 sam deploy --stack-name infinite-mashup-studio --region us-east-1 \
-  --parameter-overrides AppUrl=https://infinite-mashup-studio.netlify.app MailFrom=YOUR_VERIFIED_SES_FROM
+  --parameter-overrides AppUrl=https://infinite-mashup-studio.netlify.app MailFrom=VERIFIED_SES_FROM
 ```
 
-Enable Bedrock model access for Nova Pro (us-east-1) and Stability image models (us-west-2). Fuse is 30–90s; the UI polls `/jobs/{id}`.
-
-SES From a Gmail address will fail Gmail DMARC. Use a domain with SPF/DKIM for inbox mail. Browser notifications still fire on complete.
-
-## Challenge article
-
-See [`ARTICLE.md`](ARTICLE.md).
+Netlify env (also in `netlify.toml`): `FUSE_API_URL`, `NEXT_PUBLIC_FUSE_API_URL`, `NEXT_PUBLIC_APP_URL`, Cognito pool / client / region.
