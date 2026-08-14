@@ -12,6 +12,10 @@ const serif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Infinite Mashup Studio",
   description: "Create things that should never exist.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon" }],
+  },
 };
 
 export default function RootLayout({
