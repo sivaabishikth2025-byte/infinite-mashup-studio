@@ -29,7 +29,7 @@ export function Header() {
           Profile
         </Link>
         {email ? (
-          <a
+          <Link
             href="/?out=1"
             className="hover:text-white"
             onClick={(e) => {
@@ -38,7 +38,7 @@ export function Header() {
             }}
           >
             Sign out
-          </a>
+          </Link>
         ) : (
           <Link href="/" className="hover:text-white">
             Sign in
